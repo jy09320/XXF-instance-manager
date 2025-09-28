@@ -20,7 +20,7 @@ public class ClientWebSocketHandler implements WebSocketHandler {
     private final Map<String, WebSocketSession> clientSessions = new ConcurrentHashMap<>();
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+    public void afterConnectionEstablished(WebSocketSession session) {
         clientSessions.put(session.getId(), session);
         log.info("Client connected via WebSocket: {}", session.getId());
 
