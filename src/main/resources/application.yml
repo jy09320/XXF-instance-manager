@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: xxf-instance-manager
+  profiles:
+    active: dev
+  # 数据库配置
+  datasource:
+    url: jdbc:postgresql://localhost:5432/napcat_manager
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # MyBatis-Plus配置
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+      continue-on-error: false
+
+  # WebSocket配置
+  websocket:
+    allowed-origins:
+      - "http://localhost:3000"
+      - "http://127.0.0.1:3000"
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# 日志配置
+logging:
+  level:
+    com.jinyue: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+
+# MyBatis-Plus配置
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: assign_uuid
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.jinyue.entity
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# 自定义配置
+napcat:
+  # Docker配置
+  docker:
+    host: ${DOCKER_HOST:tcp://localhost:2375}
+    tls-verify: ${DOCKER_TLS_VERIFY:false}
+    cert-path: ${DOCKER_CERT_PATH:}
+    image: ${NAPCAT_DOCKER_IMAGE:mlikiowa/napcat-docker:latest}
+    network: ${NAPCAT_NETWORK:napcat-network}
+    container-prefix: napcat-instance
+    base-port: 6099
+
+  # WebSocket配置
+  websocket:
+    heartbeat-interval: 30000
+    connection-timeout: 60000
+    max-sessions: 100
+
+  # 消息转发配置
+  forwarding:
+    enabled: true
+    target-url: ${FORWARD_URL:http://localhost:8081/api/messages}
+    retry-attempts: 3
+    retry-delay: 5000
+    timeout: 30000
+    batch-size: 100
+
+  # 实例配置
+  instance:
+    max-instances: 50
+    default-memory-limit: 512m
+    default-cpu-limit: 1.0
+    health-check-interval: 30000
+
+  # 消息配置
+  message:
+    max-queue-size: 10000
+    batch-process-size: 50
+    retention-days: 30

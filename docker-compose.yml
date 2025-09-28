@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15
+    container_name: napcat-manager-db
+    environment:
+      POSTGRES_DB: napcat_manager_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - napcat-network
+    restart: unless-stopped
+
+  # Redis (可选，用于缓存和消息队列)
+  redis:
+    image: redis:7-alpine
+    container_name: napcat-manager-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - napcat-network
+    restart: unless-stopped
+
+  # pgAdmin (可选，数据库管理界面)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: napcat-manager-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - napcat-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  napcat-network:
+    driver: bridge
+    name: napcat-network
