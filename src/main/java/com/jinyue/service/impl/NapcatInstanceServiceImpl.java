@@ -40,9 +40,7 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
     @Value("${napcat.instance.max-instances}")
     private int maxInstances;
 
-    @Override
-    @Transactional
-public InstanceResponse createInstance(CreateInstanceRequest request) {
+    private InstanceResponse createInstance(CreateInstanceRequest request) {
         validateCreateRequest(request);
 
         checkInstanceLimit();

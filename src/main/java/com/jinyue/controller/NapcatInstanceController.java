@@ -3,7 +3,6 @@ package com.jinyue.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.jinyue.dto.InstanceOperationRequest;
 import com.jinyue.dto.InstanceOperationResponse;
-import com.jinyue.dto.CreateInstanceRequest;
 import com.jinyue.dto.CreateMultiInstanceRequest;
 import com.jinyue.dto.InstanceResponse;
 import com.jinyue.dto.MultiInstanceResponse;
@@ -31,23 +30,9 @@ public class NapcatInstanceController {
 
     private final INapcatInstanceService instanceService;
 
-    @PostMapping
-    @Operation(summary = "创建Napcat实例", description = "创建一个新的Napcat实例")
-    public ResponseEntity<InstanceResponse> createInstance(@RequestBody CreateInstanceRequest request) {
-        try {
-            InstanceResponse response = instanceService.createInstance(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid create instance request: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            log.error("Failed to create instance: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
 
-    @PostMapping("/batch")
-    @Operation(summary = "批量创建Napcat实例", description = "批量创建多个Napcat实例，自动分配端口号")
+    @PostMapping
+    @Operation(summary = "创建Napcat实例", description = "创建单个或多个Napcat实例，自动分配端口号")
     public ResponseEntity<MultiInstanceResponse> createMultipleInstances(@Valid @RequestBody CreateMultiInstanceRequest request) {
         try {
             MultiInstanceResponse response = instanceService.createMultipleInstances(request);

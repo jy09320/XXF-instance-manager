@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.jinyue.dto.InstanceOperationRequest;
 import com.jinyue.dto.InstanceOperationResponse;
-import com.jinyue.dto.CreateInstanceRequest;
 import com.jinyue.dto.CreateMultiInstanceRequest;
 import com.jinyue.dto.InstanceResponse;
 import com.jinyue.dto.MultiInstanceResponse;
@@ -14,12 +13,6 @@ import java.util.List;
 
 public interface INapcatInstanceService extends IService<NapcatInstance> {
 
-    /**
-     * 创建Napcat实例
-     * @param request 创建请求
-     * @return 实例响应
-     */
-    InstanceResponse createInstance(CreateInstanceRequest request);
 
     /**
      * 启动实例
