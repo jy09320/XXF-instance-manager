@@ -1,12 +1,11 @@
 package com.jinyue.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.jinyue.dto.InstanceOperationRequest;
-import com.jinyue.dto.InstanceOperationResponse;
-import com.jinyue.dto.CreateMultiInstanceRequest;
-import com.jinyue.dto.InstanceResponse;
-import com.jinyue.dto.MultiInstanceResponse;
+import com.jinyue.dto.*;
+import com.jinyue.entity.TaskInfo;
+import com.jinyue.service.IAsyncOperationService;
 import com.jinyue.service.INapcatInstanceService;
+import com.jinyue.service.ITaskManagerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +26,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Tag(name = "Napcat实例管理", description = "管理Napcat实例的生命周期")
 public class NapcatInstanceController {
+    // 注入新的服务
+    private final ITaskManagerService taskManagerService;
+    private final IAsyncOperationService asyncOperationService;
 
     private final INapcatInstanceService instanceService;
 
@@ -96,47 +98,39 @@ public class NapcatInstanceController {
     }
 
     @PutMapping("/start")
-    @Operation(summary = "启动实例", description = "启动单个或多个Napcat实例")
+    @Operation(summary = "启动实例", description = "异步启动单个或多个Napcat实例")
     public ResponseEntity<?> startInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            InstanceOperationResponse response = instanceService.startInstances(request);
+            // 创建任务
+            TaskInfo task = taskManagerService.createTask("START", request.getIds());
 
-            // 单个实例时返回简单响应，多个实例时返回详细响应
-            if (request.getIds().size() == 1 && response.getFailedCount() == 0) {
-                return ResponseEntity.ok(Map.of("message", "Instance started successfully"));
-            }
+            // 异步执行
+            asyncOperationService.executeStartOperationsAsync(task.getTaskId(), request.getIds());
 
-            if (response.getFailedCount() > 0 && response.getSuccessCount() == 0) {
-                return ResponseEntity.badRequest().body(response);
-            } else if (response.getFailedCount() > 0) {
-                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(response);
-            } else {
-                return ResponseEntity.ok(response);
-            }
+            // 立即返回任务ID
+            return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
+
         } catch (Exception e) {
             log.error("Failed to start instances: {}", e.getMessage());
-            return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to start operation"));
         }
     }
 
+// 同样修改stop、restart、delete方法，调用对应的async方法
+
     @PutMapping("/stop")
-    @Operation(summary = "停止实例", description = "停止单个或多个Napcat实例")
+    @Operation(summary = "停止实例", description = "异步停止单个或多个Napcat实例")
     public ResponseEntity<?> stopInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            InstanceOperationResponse response = instanceService.stopInstances(request);
+            // 创建任务
+            TaskInfo task = taskManagerService.createTask("STOP", request.getIds());
 
-            // 单个实例时返回简单响应，多个实例时返回详细响应
-            if (request.getIds().size() == 1 && response.getFailedCount() == 0) {
-                return ResponseEntity.ok(Map.of("message", "Instance stopped successfully"));
-            }
+            // 异步执行
+            asyncOperationService.executeStopOperationsAsync(task.getTaskId(), request.getIds());
 
-            if (response.getFailedCount() > 0 && response.getSuccessCount() == 0) {
-                return ResponseEntity.badRequest().body(response);
-            } else if (response.getFailedCount() > 0) {
-                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(response);
-            } else {
-                return ResponseEntity.ok(response);
-            }
+            // 立即返回任务ID
+            return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
+
         } catch (Exception e) {
             log.error("Failed to stop instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
@@ -147,20 +141,15 @@ public class NapcatInstanceController {
     @Operation(summary = "重启实例", description = "重启单个或多个Napcat实例")
     public ResponseEntity<?> restartInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            InstanceOperationResponse response = instanceService.restartInstances(request);
+            // 创建任务
+            TaskInfo task = taskManagerService.createTask("RESTART", request.getIds());
 
-            // 单个实例时返回简单响应，多个实例时返回详细响应
-            if (request.getIds().size() == 1 && response.getFailedCount() == 0) {
-                return ResponseEntity.ok(Map.of("message", "Instance restarted successfully"));
-            }
+            // 异步执行
+            asyncOperationService.executeRestartOperationsAsync(task.getTaskId(), request.getIds());
 
-            if (response.getFailedCount() > 0 && response.getSuccessCount() == 0) {
-                return ResponseEntity.badRequest().body(response);
-            } else if (response.getFailedCount() > 0) {
-                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(response);
-            } else {
-                return ResponseEntity.ok(response);
-            }
+            // 立即返回任务ID
+            return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
+
         } catch (Exception e) {
             log.error("Failed to restart instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
@@ -171,20 +160,15 @@ public class NapcatInstanceController {
     @Operation(summary = "删除实例", description = "删除单个或多个Napcat实例")
     public ResponseEntity<?> deleteInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            InstanceOperationResponse response = instanceService.deleteInstances(request);
+            // 创建任务
+            TaskInfo task = taskManagerService.createTask("DELETE", request.getIds());
 
-            // 单个实例时返回简单响应，多个实例时返回详细响应
-            if (request.getIds().size() == 1 && response.getFailedCount() == 0) {
-                return ResponseEntity.ok(Map.of("message", "Instance deleted successfully"));
-            }
+            // 异步执行
+            asyncOperationService.executeDeleteOperationsAsync(task.getTaskId(), request.getIds());
 
-            if (response.getFailedCount() > 0 && response.getSuccessCount() == 0) {
-                return ResponseEntity.badRequest().body(response);
-            } else if (response.getFailedCount() > 0) {
-                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(response);
-            } else {
-                return ResponseEntity.ok(response);
-            }
+            // 立即返回任务ID
+            return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
+
         } catch (Exception e) {
             log.error("Failed to delete instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));

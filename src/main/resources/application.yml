@@ -106,3 +106,12 @@ napcat:
     max-queue-size: 10000
     batch-process-size: 50
     retention-days: 30
+async:
+  task:
+    core-pool-size: 5
+    max-pool-size: 10
+    queue-capacity: 100
+  operation:
+    core-pool-size: 10
+    max-pool-size: 20
+    timeout-seconds: 60
