@@ -529,27 +529,26 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
             // 获取实例信息
             NapcatInstance instance = getInstanceById(instanceId);
 
-            // 构建二维码文件路径
-            String instanceDataPath = dockerService.getInstanceDataPath(instance.getName());
-            String qrCodePath = instanceDataPath + "/cache/qrcode.png";
+            // 检查实例是否有容器ID
+            if (instance.getContainerId() == null) {
+                log.warn("Instance {} has no container ID", instance.getName());
+                return null;
+            }
 
-            File qrCodeFile = new File(qrCodePath);
+            // 使用Docker API从容器中复制二维码文件
+            String qrCodePath = "/app/napcat/cache/qrcode.png";
+            byte[] qrCodeBytes = dockerService.copyFileFromContainer(instance.getContainerId(), qrCodePath);
 
-            if (!qrCodeFile.exists()) {
+            if (qrCodeBytes == null) {
                 log.warn("QR code file not found for instance {}: {}", instance.getName(), qrCodePath);
                 return null;
             }
 
-            // 读取文件内容
-            byte[] qrCodeBytes = Files.readAllBytes(qrCodeFile.toPath());
-            log.info("Successfully read QR code for instance {}, file size: {} bytes",
+            log.info("Successfully retrieved QR code for instance {}, file size: {} bytes",
                     instance.getName(), qrCodeBytes.length);
 
             return qrCodeBytes;
 
-        } catch (IOException e) {
-            log.error("Failed to read QR code file for instance {}: {}", instanceId, e.getMessage());
-            throw new RuntimeException("Failed to read QR code file: " + e.getMessage());
         } catch (RuntimeException e) {
             log.error("Failed to get QR code for instance {}: {}", instanceId, e.getMessage());
             throw e;

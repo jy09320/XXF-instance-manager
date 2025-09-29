@@ -34,8 +34,6 @@ public class DockerServiceImpl implements IDockerService {
     @Value("${napcat.docker.container-prefix}")
     private String containerPrefix;
 
-    @Value("${napcat.docker.data-dir}")
-    private String dataDir;
 
     @Override
     public String createContainer(String instanceName, NapcatConfig config, int port) {
@@ -277,25 +275,14 @@ public class DockerServiceImpl implements IDockerService {
     private List<Bind> buildBinds(String instanceName) {
         List<Bind> binds = new ArrayList<>();
 
-        // 构建实例数据目录路径
-        String hostDataPath = dataDir + "/instances/" + instanceName;
+        // 使用命名Volume替代Bind挂载
+        String volumeName = "napcat-data-" + instanceName;
         String containerDataPath = "/app/napcat";
 
-        // 确保宿主机目录存在
-        File hostDir = new File(hostDataPath);
-        if (!hostDir.exists()) {
-            boolean created = hostDir.mkdirs();
-            if (created) {
-                log.info("Created data directory for instance {}: {}", instanceName, hostDataPath);
-            } else {
-                log.warn("Failed to create data directory for instance {}: {}", instanceName, hostDataPath);
-            }
-        }
+        // 创建Volume挂载绑定
+        binds.add(new Bind(volumeName, new Volume(containerDataPath)));
 
-        // 创建挂载绑定
-        binds.add(new Bind(hostDataPath, new Volume(containerDataPath)));
-
-        log.debug("Configured mount: {} -> {}", hostDataPath, containerDataPath);
+        log.debug("Configured volume mount: {} -> {}", volumeName, containerDataPath);
         return binds;
     }
 
@@ -303,7 +290,77 @@ public class DockerServiceImpl implements IDockerService {
      * 获取实例数据目录路径
      */
     public String getInstanceDataPath(String instanceName) {
-        return dataDir + "/instances/" + instanceName;
+        // 对于Volume挂载，返回Volume名称
+        return "napcat-data-" + instanceName;
+    }
+
+    /**
+     * 从容器中复制文件
+     */
+    @Override
+    public byte[] copyFileFromContainer(String containerId, String containerPath) {
+        try {
+            // 检查容器是否存在且运行中
+            if (!containerExists(containerId)) {
+                log.warn("Container {} not found", containerId);
+                return null;
+            }
+
+            ContainerStatus status = getContainerStatus(containerId);
+            if (status != ContainerStatus.RUNNING) {
+                log.warn("Container {} is not running, status: {}", containerId, status);
+                return null;
+            }
+
+            // 使用Docker API复制文件
+            try (var inputStream = dockerClient.copyArchiveFromContainerCmd(containerId, containerPath).exec()) {
+                // 读取tar格式的输入流
+                return extractFileFromTarStream(inputStream);
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to copy file {} from container {}: {}", containerPath, containerId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 从tar流中提取文件内容
+     */
+    private byte[] extractFileFromTarStream(java.io.InputStream tarStream) throws java.io.IOException {
+        try (var bufferedStream = new java.io.BufferedInputStream(tarStream);
+             var byteOutput = new java.io.ByteArrayOutputStream()) {
+
+            // 简单的tar文件头解析
+            byte[] header = new byte[512];
+
+            while (bufferedStream.read(header) == 512) {
+                // 获取文件大小（tar头部的124-135字节，8进制表示）
+                String sizeStr = new String(header, 124, 11).trim();
+                if (sizeStr.isEmpty()) continue;
+
+                long size;
+                try {
+                    size = Long.parseLong(sizeStr, 8);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+
+                if (size > 0) {
+                    // 读取文件内容
+                    byte[] fileContent = new byte[(int) size];
+                    int bytesRead = bufferedStream.read(fileContent);
+                    if (bytesRead > 0) {
+                        return java.util.Arrays.copyOf(fileContent, bytesRead);
+                    }
+                }
+
+                // 跳过padding到512字节边界
+                long padding = (512 - (size % 512)) % 512;
+                bufferedStream.skip(padding);
+            }
+        }
+        return null;
     }
 
     private static class PullImageResultCallback extends com.github.dockerjava.api.async.ResultCallback.Adapter<PullResponseItem> {

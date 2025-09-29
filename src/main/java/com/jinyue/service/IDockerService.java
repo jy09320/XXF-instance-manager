@@ -62,6 +62,14 @@ public interface IDockerService {
      */
     String getInstanceDataPath(String instanceName);
 
+    /**
+     * 从容器中复制文件
+     * @param containerId 容器ID
+     * @param containerPath 容器内文件路径
+     * @return 文件内容的字节数组，如果文件不存在返回null
+     */
+    byte[] copyFileFromContainer(String containerId, String containerPath);
+
     enum ContainerStatus {
         RUNNING,
         STOPPED,
