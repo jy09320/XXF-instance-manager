@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,6 +34,9 @@ public class DockerServiceImpl implements IDockerService {
     @Value("${napcat.docker.container-prefix}")
     private String containerPrefix;
 
+    @Value("${napcat.docker.data-dir}")
+    private String dataDir;
+
     @Override
     public String createContainer(String instanceName, NapcatConfig config, int port) {
         try {
@@ -51,6 +55,9 @@ public class DockerServiceImpl implements IDockerService {
             // 构建暴露端口
             List<ExposedPort> exposedPorts = buildExposedPorts(config);
 
+            // 构建挂载点
+            List<Bind> binds = buildBinds(instanceName);
+
             CreateContainerResponse container = dockerClient.createContainerCmd(napcatImage)
                     .withName(containerName)
                     .withHostConfig(HostConfig.newHostConfig()
@@ -59,7 +66,8 @@ public class DockerServiceImpl implements IDockerService {
                             .withMemory(parseMemoryLimit(config.getMemoryLimit()))
                             .withCpuQuota((long)(config.getCpuLimit() * 100000))
                             .withAutoRemove(false)
-                            .withRestartPolicy(getRestartPolicy(config.getRestartPolicy())))
+                            .withRestartPolicy(getRestartPolicy(config.getRestartPolicy()))
+                            .withBinds(binds))
                     .withEnv(buildEnvironmentVariables(config))
                     .withExposedPorts(exposedPorts)
                     .withLabels(java.util.Map.of(
@@ -264,6 +272,38 @@ public class DockerServiceImpl implements IDockerService {
             case "unless-stopped" -> RestartPolicy.unlessStoppedRestart();
             default -> RestartPolicy.noRestart();
         };
+    }
+
+    private List<Bind> buildBinds(String instanceName) {
+        List<Bind> binds = new ArrayList<>();
+
+        // 构建实例数据目录路径
+        String hostDataPath = dataDir + "/instances/" + instanceName;
+        String containerDataPath = "/app/napcat";
+
+        // 确保宿主机目录存在
+        File hostDir = new File(hostDataPath);
+        if (!hostDir.exists()) {
+            boolean created = hostDir.mkdirs();
+            if (created) {
+                log.info("Created data directory for instance {}: {}", instanceName, hostDataPath);
+            } else {
+                log.warn("Failed to create data directory for instance {}: {}", instanceName, hostDataPath);
+            }
+        }
+
+        // 创建挂载绑定
+        binds.add(new Bind(hostDataPath, new Volume(containerDataPath)));
+
+        log.debug("Configured mount: {} -> {}", hostDataPath, containerDataPath);
+        return binds;
+    }
+
+    /**
+     * 获取实例数据目录路径
+     */
+    public String getInstanceDataPath(String instanceName) {
+        return dataDir + "/instances/" + instanceName;
     }
 
     private static class PullImageResultCallback extends com.github.dockerjava.api.async.ResultCallback.Adapter<PullResponseItem> {

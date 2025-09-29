@@ -55,6 +55,13 @@ public interface IDockerService {
      */
     List<Container> listNapcatContainers();
 
+    /**
+     * 获取实例数据目录路径
+     * @param instanceName 实例名称
+     * @return 数据目录路径
+     */
+    String getInstanceDataPath(String instanceName);
+
     enum ContainerStatus {
         RUNNING,
         STOPPED,

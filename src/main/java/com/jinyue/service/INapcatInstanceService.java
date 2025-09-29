@@ -93,4 +93,11 @@ public interface INapcatInstanceService extends IService<NapcatInstance> {
      * @return 操作响应
      */
     InstanceOperationResponse deleteInstances(InstanceOperationRequest request);
+
+    /**
+     * 获取实例的二维码文件
+     * @param instanceId 实例ID
+     * @return 二维码文件字节数组，如果文件不存在返回null
+     */
+    byte[] getInstanceQrCode(String instanceId);
 }

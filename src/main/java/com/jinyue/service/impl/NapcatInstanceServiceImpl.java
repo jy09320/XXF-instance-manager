@@ -21,6 +21,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -518,6 +521,39 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
                 operation, response.getSuccessCount(), response.getFailedCount());
 
         return response;
+    }
+
+    @Override
+    public byte[] getInstanceQrCode(String instanceId) {
+        try {
+            // 获取实例信息
+            NapcatInstance instance = getInstanceById(instanceId);
+
+            // 构建二维码文件路径
+            String instanceDataPath = dockerService.getInstanceDataPath(instance.getName());
+            String qrCodePath = instanceDataPath + "/cache/qrcode.png";
+
+            File qrCodeFile = new File(qrCodePath);
+
+            if (!qrCodeFile.exists()) {
+                log.warn("QR code file not found for instance {}: {}", instance.getName(), qrCodePath);
+                return null;
+            }
+
+            // 读取文件内容
+            byte[] qrCodeBytes = Files.readAllBytes(qrCodeFile.toPath());
+            log.info("Successfully read QR code for instance {}, file size: {} bytes",
+                    instance.getName(), qrCodeBytes.length);
+
+            return qrCodeBytes;
+
+        } catch (IOException e) {
+            log.error("Failed to read QR code file for instance {}: {}", instanceId, e.getMessage());
+            throw new RuntimeException("Failed to read QR code file: " + e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Failed to get QR code for instance {}: {}", instanceId, e.getMessage());
+            throw e;
+        }
     }
 
     @FunctionalInterface

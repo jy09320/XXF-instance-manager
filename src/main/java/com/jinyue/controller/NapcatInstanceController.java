@@ -13,7 +13,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -197,6 +199,37 @@ public class NapcatInstanceController {
         } catch (Exception e) {
             log.error("Failed to delete instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
+        }
+    }
+
+    @GetMapping("/{id}/qrcode")
+    @Operation(summary = "获取实例二维码", description = "获取指定实例的登录二维码图片")
+    public ResponseEntity<byte[]> getInstanceQrCode(
+            @Parameter(description = "实例ID") @PathVariable String id) {
+        try {
+            byte[] qrCodeBytes = instanceService.getInstanceQrCode(id);
+
+            if (qrCodeBytes == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+            headers.setContentLength(qrCodeBytes.length);
+            headers.setCacheControl("no-cache, no-store, must-revalidate");
+            headers.setPragma("no-cache");
+            headers.setExpires(0);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(qrCodeBytes);
+
+        } catch (RuntimeException e) {
+            log.warn("Instance not found or error getting QR code: {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Failed to get QR code for instance {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 
