@@ -78,6 +78,7 @@ napcat:
     network: ${NAPCAT_NETWORK:napcat-network}
     container-prefix: napcat-instance
     base-port: 6099
+    data-dir: ${NAPCAT_DATA_DIR:D:/napcat-data}
 
   # WebSocket配置
   websocket:
