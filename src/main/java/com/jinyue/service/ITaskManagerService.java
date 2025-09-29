@@ -11,6 +11,11 @@ public interface ITaskManagerService {
     TaskInfo createTask(String operation, List<String> instanceIds);
 
     /**
+     * 创建新任务，包含状态验证
+     */
+    TaskInfo createTaskWithValidation(String operation, List<String> instanceIds);
+
+    /**
      * 获取任务状态
      */
     TaskInfo getTask(String taskId);

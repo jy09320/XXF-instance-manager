@@ -3,6 +3,7 @@ package com.jinyue.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.jinyue.dto.*;
 import com.jinyue.entity.TaskInfo;
+import com.jinyue.exception.InvalidInstanceStateException;
 import com.jinyue.service.IAsyncOperationService;
 import com.jinyue.service.INapcatInstanceService;
 import com.jinyue.service.ITaskManagerService;
@@ -101,8 +102,8 @@ public class NapcatInstanceController {
     @Operation(summary = "启动实例", description = "异步启动单个或多个Napcat实例")
     public ResponseEntity<?> startInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            // 创建任务
-            TaskInfo task = taskManagerService.createTask("START", request.getIds());
+            // 创建任务（包含状态验证）
+            TaskInfo task = taskManagerService.createTaskWithValidation("START", request.getIds());
 
             // 异步执行
             asyncOperationService.executeStartOperationsAsync(task.getTaskId(), request.getIds());
@@ -110,6 +111,12 @@ public class NapcatInstanceController {
             // 立即返回任务ID
             return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
 
+        } catch (InvalidInstanceStateException e) {
+            log.warn("Invalid instance states for start operation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage(),
+                "invalidStates", e.getInvalidStates()
+            ));
         } catch (Exception e) {
             log.error("Failed to start instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to start operation"));
@@ -122,8 +129,8 @@ public class NapcatInstanceController {
     @Operation(summary = "停止实例", description = "异步停止单个或多个Napcat实例")
     public ResponseEntity<?> stopInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            // 创建任务
-            TaskInfo task = taskManagerService.createTask("STOP", request.getIds());
+            // 创建任务（包含状态验证）
+            TaskInfo task = taskManagerService.createTaskWithValidation("STOP", request.getIds());
 
             // 异步执行
             asyncOperationService.executeStopOperationsAsync(task.getTaskId(), request.getIds());
@@ -131,6 +138,12 @@ public class NapcatInstanceController {
             // 立即返回任务ID
             return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
 
+        } catch (InvalidInstanceStateException e) {
+            log.warn("Invalid instance states for stop operation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage(),
+                "invalidStates", e.getInvalidStates()
+            ));
         } catch (Exception e) {
             log.error("Failed to stop instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
@@ -141,8 +154,8 @@ public class NapcatInstanceController {
     @Operation(summary = "重启实例", description = "重启单个或多个Napcat实例")
     public ResponseEntity<?> restartInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            // 创建任务
-            TaskInfo task = taskManagerService.createTask("RESTART", request.getIds());
+            // 创建任务（包含状态验证）
+            TaskInfo task = taskManagerService.createTaskWithValidation("RESTART", request.getIds());
 
             // 异步执行
             asyncOperationService.executeRestartOperationsAsync(task.getTaskId(), request.getIds());
@@ -150,6 +163,12 @@ public class NapcatInstanceController {
             // 立即返回任务ID
             return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
 
+        } catch (InvalidInstanceStateException e) {
+            log.warn("Invalid instance states for restart operation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage(),
+                "invalidStates", e.getInvalidStates()
+            ));
         } catch (Exception e) {
             log.error("Failed to restart instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
@@ -160,8 +179,8 @@ public class NapcatInstanceController {
     @Operation(summary = "删除实例", description = "删除单个或多个Napcat实例")
     public ResponseEntity<?> deleteInstances(@Valid @RequestBody InstanceOperationRequest request) {
         try {
-            // 创建任务
-            TaskInfo task = taskManagerService.createTask("DELETE", request.getIds());
+            // 创建任务（包含状态验证）
+            TaskInfo task = taskManagerService.createTaskWithValidation("DELETE", request.getIds());
 
             // 异步执行
             asyncOperationService.executeDeleteOperationsAsync(task.getTaskId(), request.getIds());
@@ -169,6 +188,12 @@ public class NapcatInstanceController {
             // 立即返回任务ID
             return ResponseEntity.accepted().body(AsyncOperationResponse.of(task));
 
+        } catch (InvalidInstanceStateException e) {
+            log.warn("Invalid instance states for delete operation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage(),
+                "invalidStates", e.getInvalidStates()
+            ));
         } catch (Exception e) {
             log.error("Failed to delete instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
