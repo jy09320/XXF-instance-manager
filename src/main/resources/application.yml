@@ -22,12 +22,6 @@ spring:
       schema-locations: classpath:sql/schema.sql
       continue-on-error: false
 
-  # WebSocket配置
-  websocket:
-    allowed-origins:
-      - "http://localhost:3000"
-      - "http://127.0.0.1:3000"
-
 # 服务器配置
 server:
   port: 8080
@@ -57,16 +51,6 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.jinyue.entity
 
-# 监控配置
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
-  endpoint:
-    health:
-      show-details: when-authorized
-
 # 自定义配置
 napcat:
   # Docker配置
@@ -79,20 +63,6 @@ napcat:
     container-prefix: napcat-instance
     base-port: 6099
 
-  # WebSocket配置
-  websocket:
-    heartbeat-interval: 30000
-    connection-timeout: 60000
-    max-sessions: 100
-
-  # 消息转发配置
-  forwarding:
-    enabled: true
-    target-url: ${FORWARD_URL:http://localhost:8081/api/messages}
-    retry-attempts: 3
-    retry-delay: 5000
-    timeout: 30000
-    batch-size: 100
 
   # 实例配置
   instance:
@@ -101,11 +71,6 @@ napcat:
     default-cpu-limit: 1.0
     health-check-interval: 30000
 
-  # 消息配置
-  message:
-    max-queue-size: 10000
-    batch-process-size: 50
-    retention-days: 30
 async:
   task:
     core-pool-size: 5
