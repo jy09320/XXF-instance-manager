@@ -70,6 +70,14 @@ public interface IDockerService {
      */
     byte[] copyFileFromContainer(String containerId, String containerPath);
 
+    /**
+     * 复制文件到容器中
+     * @param containerId 容器ID
+     * @param fileContent 文件内容
+     * @param containerPath 容器内目标路径
+     */
+    void copyFileToContainer(String containerId, String fileContent, String containerPath);
+
     enum ContainerStatus {
         RUNNING,
         STOPPED,

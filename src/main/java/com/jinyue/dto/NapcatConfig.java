@@ -28,8 +28,8 @@ public class NapcatConfig {
     @Schema(description = "是否启用WebSocket接口", example = "true", defaultValue = "true")
     private Boolean enableWs = true;
 
-    @Schema(description = "是否自动登录", example = "true", defaultValue = "false")
-    private Boolean autoLogin = false;
+    @Schema(description = "是否自动登录", example = "true", defaultValue = "true")
+    private Boolean autoLogin = true;
 
     @Schema(description = "协议版本 (1-安卓手机, 2-安卓平板, 3-安卓手表, 4-MacOS, 5-iPad)",
             example = "1", defaultValue = "1", allowableValues = {"1", "2", "3", "4", "5"})

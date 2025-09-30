@@ -15,6 +15,7 @@ import com.jinyue.entity.NapcatInstance;
 import com.jinyue.mapper.NapcatInstanceMapper;
 import com.jinyue.service.IDockerService;
 import com.jinyue.service.INapcatInstanceService;
+import com.jinyue.utils.NapcatConfigFileGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,12 +37,16 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
         implements INapcatInstanceService {
 
     private final IDockerService dockerService;
+    private final NapcatConfigFileGenerator configFileGenerator;
 
     @Value("${napcat.docker.base-port}")
     private int basePort;
 
     @Value("${napcat.instance.max-instances}")
     private int maxInstances;
+
+    @Value("${server.port}")
+    private int serverPort;
 
     private InstanceResponse createInstance(CreateInstanceRequest request) {
         validateCreateRequest(request);
@@ -101,6 +106,11 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
 
             instance.setContainerId(containerId);
             updateById(instance);
+
+            // 生成并复制OneBot配置文件到容器
+            if (instance.getQqAccount() != null && !instance.getQqAccount().isEmpty()) {
+                generateAndCopyConfigFile(containerId, instance.getQqAccount());
+            }
 
             log.info("Created instance: {} with container: {}", instance.getName(), containerId);
             return InstanceResponse.from(instance);
@@ -552,6 +562,33 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
         } catch (RuntimeException e) {
             log.error("Failed to get QR code for instance {}: {}", instanceId, e.getMessage());
             throw e;
+        }
+    }
+
+    /**
+     * 生成并复制OneBot配置文件到容器
+     */
+    private void generateAndCopyConfigFile(String containerId, String qqAccount) {
+        try {
+            // 构建webhook URL - 使用host.docker.internal访问宿主机服务
+            String webhookUrl = "http://host.docker.internal:" + serverPort + "/api/webhook/message";
+
+            // 生成配置文件内容
+            String configContent = configFileGenerator.generateOneBotConfig(qqAccount, webhookUrl);
+
+            // 获取配置文件在容器中的路径
+            String configPath = configFileGenerator.getConfigFilePath(qqAccount);
+
+            // 复制配置文件到容器
+            dockerService.copyFileToContainer(containerId, configContent, configPath);
+
+            log.info("Successfully generated and copied OneBot config file for QQ account: {} to container: {}",
+                    qqAccount, containerId);
+
+        } catch (Exception e) {
+            log.error("Failed to generate and copy config file for QQ account: {} to container: {}: {}",
+                    qqAccount, containerId, e.getMessage());
+            // 不抛出异常，避免影响容器创建流程，但记录错误日志
         }
     }
 

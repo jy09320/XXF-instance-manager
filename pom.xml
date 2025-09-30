@@ -78,6 +78,13 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- Apache Commons Compress for tar handling -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.25.0</version>
+        </dependency>
+
         <!-- API Documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>

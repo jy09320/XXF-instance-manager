@@ -12,9 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -361,6 +359,78 @@ public class DockerServiceImpl implements IDockerService {
             }
         }
         return null;
+    }
+
+    /**
+     * 复制文件到容器中
+     */
+    @Override
+    public void copyFileToContainer(String containerId, String fileContent, String containerPath) {
+        try {
+            // 检查容器是否存在
+            if (!containerExists(containerId)) {
+                throw new RuntimeException("Container " + containerId + " not found");
+            }
+
+            // 创建临时tar包含文件内容
+            byte[] tarData = createTarArchive(fileContent, getFileNameFromPath(containerPath));
+
+            // 获取目标目录路径（去掉文件名）
+            String targetDir = getDirectoryFromPath(containerPath);
+
+            // 复制文件到容器
+            try (var inputStream = new java.io.ByteArrayInputStream(tarData)) {
+                dockerClient.copyArchiveToContainerCmd(containerId)
+                        .withTarInputStream(inputStream)
+                        .withRemotePath(targetDir)
+                        .exec();
+            }
+
+            log.info("Successfully copied file to container {}: {}", containerId, containerPath);
+
+        } catch (Exception e) {
+            log.error("Failed to copy file to container {}: {}", containerId, e.getMessage());
+            throw new RuntimeException("Failed to copy file to container", e);
+        }
+    }
+
+    /**
+     * 创建包含单个文件的tar归档
+     */
+    private byte[] createTarArchive(String fileContent, String fileName) throws java.io.IOException {
+        try (var byteOutput = new java.io.ByteArrayOutputStream();
+             var tarOutput = new org.apache.commons.compress.archivers.tar.TarArchiveOutputStream(byteOutput)) {
+
+            byte[] contentBytes = fileContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+            // 创建tar条目
+            org.apache.commons.compress.archivers.tar.TarArchiveEntry entry =
+                new org.apache.commons.compress.archivers.tar.TarArchiveEntry(fileName);
+            entry.setSize(contentBytes.length);
+            entry.setMode(0644); // 设置文件权限
+
+            tarOutput.putArchiveEntry(entry);
+            tarOutput.write(contentBytes);
+            tarOutput.closeArchiveEntry();
+            tarOutput.finish();
+
+            return byteOutput.toByteArray();
+        }
+    }
+
+    /**
+     * 从路径中提取文件名
+     */
+    private String getFileNameFromPath(String path) {
+        return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    /**
+     * 从路径中提取目录路径
+     */
+    private String getDirectoryFromPath(String path) {
+        int lastSlash = path.lastIndexOf('/');
+        return lastSlash > 0 ? path.substring(0, lastSlash) : "/";
     }
 
     private static class PullImageResultCallback extends com.github.dockerjava.api.async.ResultCallback.Adapter<PullResponseItem> {

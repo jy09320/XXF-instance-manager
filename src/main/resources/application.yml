@@ -63,13 +63,17 @@ napcat:
     container-prefix: napcat-instance
     base-port: 6099
 
-
   # 实例配置
   instance:
     max-instances: 50
     default-memory-limit: 512m
     default-cpu-limit: 1.0
     health-check-interval: 30000
+
+# 消息转发配置
+message:
+  forward:
+    target-url: ${MESSAGE_FORWARD_TARGET_URL:}
 
 async:
   task:
