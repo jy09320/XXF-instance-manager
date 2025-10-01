@@ -10,10 +10,10 @@ import java.util.List;
 public class MultiInstanceResponse {
 
     @Schema(description = "成功创建的实例列表")
-    private List<InstanceResponse> successInstances;
+    private List<InstanceResponse> instances;
 
     @Schema(description = "创建失败的信息列表")
-    private List<FailedInstance> failedInstances;
+    private List<FailedInstance> errors;
 
     @Schema(description = "总计请求数量")
     private Integer totalRequested;

@@ -99,6 +99,9 @@ public class DockerServiceImpl implements IDockerService {
                     .withTimeout(30)
                     .exec();
             log.info("Stopped container: {}", containerId);
+        } catch (com.github.dockerjava.api.exception.NotModifiedException e) {
+            // 304 状态码：容器已经停止，不需要再次停止
+            log.info("Container {} is already stopped, skipping", containerId);
         } catch (Exception e) {
             log.error("Failed to stop container {}: {}", containerId, e.getMessage());
             throw new RuntimeException("Failed to stop container", e);
@@ -112,6 +115,9 @@ public class DockerServiceImpl implements IDockerService {
                     .withForce(true)
                     .exec();
             log.info("Removed container: {}", containerId);
+        } catch (com.github.dockerjava.api.exception.NotFoundException e) {
+            // 404 状态码：容器不存在，可能已经被删除
+            log.info("Container {} not found, may already be removed", containerId);
         } catch (Exception e) {
             log.error("Failed to remove container {}: {}", containerId, e.getMessage());
             throw new RuntimeException("Failed to remove container", e);

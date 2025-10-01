@@ -339,8 +339,8 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
 
         MultiInstanceResponse response = new MultiInstanceResponse();
         response.setTotalRequested(request.getCount());
-        response.setSuccessInstances(new ArrayList<>());
-        response.setFailedInstances(new ArrayList<>());
+        response.setInstances(new ArrayList<>());
+        response.setErrors(new ArrayList<>());
 
         List<Integer> availablePorts = findAvailablePorts(request.getCount());
         if (availablePorts.size() < request.getCount()) {
@@ -365,7 +365,7 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
                 singleRequest.setConfig(config);
 
                 InstanceResponse instanceResponse = createInstance(singleRequest);
-                response.getSuccessInstances().add(instanceResponse);
+                response.getInstances().add(instanceResponse);
 
                 if (request.getAutoStart()) {
                     try {
@@ -380,14 +380,14 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
                 failed.setName(generateInstanceName(request.getNamePrefix(), i));
                 failed.setQqAccount(getQqAccountForIndex(request.getQqAccounts(), i));
                 failed.setReason(e.getMessage());
-                response.getFailedInstances().add(failed);
+                response.getErrors().add(failed);
 
                 log.error("Failed to create instance {}: {}", failed.getName(), e.getMessage());
             }
         }
 
-        response.setSuccessCount(response.getSuccessInstances().size());
-        response.setFailedCount(response.getFailedInstances().size());
+        response.setSuccessCount(response.getInstances().size());
+        response.setFailedCount(response.getErrors().size());
 
         log.info("Batch creation completed: {} success, {} failed",
                 response.getSuccessCount(), response.getFailedCount());
