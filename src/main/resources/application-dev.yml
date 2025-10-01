@@ -1,10 +1,12 @@
 # 开发环境配置
+server:
+  port: 8080
 spring:
   # 数据库配置 - 开发环境使用本地PostgreSQL
   datasource:
-    url: jdbc:postgresql://localhost:5432/napcat_manager_dev
+    url: jdbc:postgresql://localhost:5433/napcat_manager_dev
     username: postgres
-    password: 123456tpf
+    password: postgres123
 
   # SQL初始化 - 开发环境
   sql:
@@ -37,8 +39,13 @@ napcat:
     tls-verify: false
 
   forwarding:
-    target-url: http://localhost:8081/api/messages
+    target-url: http://localhost:8080/api/messages
 
   instance:
     max-instances: 10
     health-check-interval: 10000
+
+# 消息转发配置 - 开发环境使用localhost
+message:
+  forward:
+    target-url: http://localhost:8084/api/webhook/napcat-message

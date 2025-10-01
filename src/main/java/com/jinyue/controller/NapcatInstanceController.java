@@ -3,6 +3,7 @@ package com.jinyue.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.jinyue.dto.*;
 import com.jinyue.entity.TaskInfo;
+import com.jinyue.dto.InstanceAccessInfo;
 import com.jinyue.exception.InvalidInstanceStateException;
 import com.jinyue.service.IAsyncOperationService;
 import com.jinyue.service.INapcatInstanceService;
@@ -200,6 +201,63 @@ public class NapcatInstanceController {
             log.error("Failed to delete instances: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
         }
+    }
+
+    @GetMapping("/uuid/{uuid}/access-info")
+    @Operation(summary = "获取实例访问信息", description = "通过UUID获取NapCat实例的访问信息,用于proxy路由消息")
+    public ResponseEntity<InstanceAccessInfo> getInstanceAccessInfo(
+            @Parameter(description = "实例UUID") @PathVariable String uuid) {
+        try {
+            // 通过UUID获取实例
+            InstanceResponse instance = instanceService.getInstance(uuid);
+
+            if (instance == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 构建访问信息
+            InstanceAccessInfo accessInfo = InstanceAccessInfo.builder()
+                    .uuid(instance.getId())
+                    .qqAccount(instance.getQqAccount())
+                    .napcatUrl(buildNapcatUrl(instance))
+                    .napcatToken(extractNapcatToken(instance))
+                    .status(instance.getStatus().name())
+                    .port(instance.getPort())
+                    .build();
+
+            return ResponseEntity.ok(accessInfo);
+        } catch (RuntimeException e) {
+            log.warn("Instance not found by UUID: {}", uuid);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Failed to get instance access info for UUID {}: {}", uuid, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 构建NapCat实例的HTTP API地址
+     */
+    private String buildNapcatUrl(InstanceResponse instance) {
+        // 根据实例端口构建URL
+        // 注意: 这里假设NapCat实例运行在localhost,实际部署时可能需要调整
+        return String.format("http://localhost:%d", instance.getPort());
+    }
+
+    /**
+     * 从实例配置中提取NapCat Token
+     */
+    private String extractNapcatToken(InstanceResponse instance) {
+        // 从配置中提取token (如果配置了的话)
+        try {
+            return null;
+//            if (instance.getConfig() != null) {
+//                return instance.getConfig().getToken();
+//            }
+        } catch (Exception e) {
+            log.debug("Failed to extract NapCat token for instance {}: {}", instance.getId(), e.getMessage());
+        }
+        return null;
     }
 
     @GetMapping("/{id}/qrcode")

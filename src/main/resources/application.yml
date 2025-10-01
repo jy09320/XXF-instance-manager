@@ -73,7 +73,8 @@ napcat:
 # 消息转发配置
 message:
   forward:
-    target-url: ${MESSAGE_FORWARD_TARGET_URL:}
+    # 消息转发目标URL - 指向xxf-proxy的NapCat消息接收接口
+    target-url: ${MESSAGE_FORWARD_TARGET_URL:http://xxf-proxy:8084/api/webhook/napcat-message}
 
 async:
   task:

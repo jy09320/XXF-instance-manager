@@ -21,7 +21,7 @@ public class WebhookMessageServiceImpl implements IWebhookMessageService {
     private final INapcatInstanceService napcatInstanceService;
     private final RestTemplate restTemplate;
 
-    @Value("${message.forward.target-url:}")
+    @Value("${message.forward.target-url:http://xxf-proxy:8084/api/webhook/napcat-message}")
     private String targetUrl;
 
     @Override
@@ -53,35 +53,57 @@ public class WebhookMessageServiceImpl implements IWebhookMessageService {
     }
 
     /**
-     * 转发消息到外部服务
+     * 转发消息到xxf-proxy (统一使用snake_case命名格式)
      */
     private void forwardMessage(WebhookMessageRequest request, String instanceId) {
         try {
-            // 创建简单的转发数据
+            // 创建符合xxf-bot-backend IncomingMessage格式的数据
             Map<String, Object> data = new HashMap<>();
-            data.put("instanceId", instanceId);
-            data.put("postType", request.getPostType());
-            data.put("messageType", request.getMessageType());
-            data.put("messageId", request.getMessageId());
-            data.put("userId", request.getUserId());
-            data.put("selfId", request.getSelfId());
-            data.put("rawMessage", request.getRawMessage());
-            data.put("time", request.getTime());
-            data.put("sender", request.getSender());
 
-            // 添加群组信息（如果是群消息）
-            if (request.getGroupId() != null) {
-                data.put("groupId", request.getGroupId());
-                data.put("groupName", request.getGroupName());
+            // 关键字段: NapCat实例UUID
+            data.put("napcat_instance_uuid", instanceId);
+
+            // 平台和消息基本信息
+            data.put("platform", "qq");
+            data.put("message_id", request.getMessageId().toString());
+            data.put("message_type", request.getMessageType());
+
+            // 发送者信息
+            data.put("sender_id", request.getUserId().toString());
+            data.put("sender_nickname", request.getSender().getNickname());
+
+            // 接收者信息 (机器人自己)
+            data.put("receiver_id", request.getSelfId().toString());
+
+            // 消息内容
+            data.put("content", request.getRawMessage());
+
+            // 时间戳 (转换为ISO 8601格式)
+            data.put("timestamp", java.time.Instant.ofEpochSecond(request.getTime()).toString());
+
+            // 目标信息 (群聊或私聊)
+            if ("group".equals(request.getMessageType())) {
+                data.put("target_id", request.getGroupId() != null ? request.getGroupId().toString() : "");
+                data.put("target_name", request.getGroupName() != null ? request.getGroupName() : "");
+            } else {
+                // 私聊时target_id就是发送者的QQ号
+                data.put("target_id", request.getUserId().toString());
+                data.put("target_name", request.getSender().getNickname());
             }
 
-            // 直接转发
+            // 原始数据 (保留完整的NapCat消息结构)
+            Map<String, Object> rawData = new HashMap<>();
+            rawData.put("original_napcat_data", request);
+            data.put("raw_data", rawData);
+
+            // 转发到xxf-proxy
             restTemplate.postForObject(targetUrl, data, String.class);
-            log.info("Message forwarded: messageId={}, instanceId={}", request.getMessageId(), instanceId);
+            log.info("Message forwarded to xxf-proxy: messageId={}, instanceUUID={}, messageType={}",
+                    request.getMessageId(), instanceId, request.getMessageType());
 
         } catch (Exception e) {
-            log.error("Forward failed: messageId={}, instanceId={}, error={}",
-                    request.getMessageId(), instanceId, e.getMessage());
+            log.error("Forward to xxf-proxy failed: messageId={}, instanceUUID={}, error={}",
+                    request.getMessageId(), instanceId, e.getMessage(), e);
         }
     }
 }
