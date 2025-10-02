@@ -14,11 +14,12 @@ import com.jinyue.dto.NapcatConfig;
 import com.jinyue.entity.NapcatInstance;
 import com.jinyue.mapper.NapcatInstanceMapper;
 import com.jinyue.service.IDockerService;
+import com.jinyue.service.IInstanceHealthCheckService;
 import com.jinyue.service.INapcatInstanceService;
 import com.jinyue.utils.NapcatConfigFileGenerator;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,12 +33,22 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper, NapcatInstance>
         implements INapcatInstanceService {
 
     private final IDockerService dockerService;
     private final NapcatConfigFileGenerator configFileGenerator;
+    private final IInstanceHealthCheckService healthCheckService;
+
+    // 使用构造函数注入，@Lazy 打破循环依赖
+    public NapcatInstanceServiceImpl(
+            IDockerService dockerService,
+            NapcatConfigFileGenerator configFileGenerator,
+            @Lazy IInstanceHealthCheckService healthCheckService) {
+        this.dockerService = dockerService;
+        this.configFileGenerator = configFileGenerator;
+        this.healthCheckService = healthCheckService;
+    }
 
     @Value("${napcat.docker.base-port}")
     private int basePort;
@@ -135,6 +146,25 @@ public class NapcatInstanceServiceImpl extends ServiceImpl<NapcatInstanceMapper,
             instance.setStatus(NapcatInstance.InstanceStatus.STARTING);
             updateById(instance);
 
+            // 检查容器是否存在，不存在则自动修复
+            if (instance.getContainerId() == null ||
+                !dockerService.containerExists(instance.getContainerId())) {
+
+                log.warn("Instance {} container missing (ID: {}), attempting repair",
+                        instance.getName(), instance.getContainerId());
+
+                boolean repaired = healthCheckService.repairInstanceContainer(instanceId);
+                if (!repaired) {
+                    throw new RuntimeException("容器不存在且修复失败");
+                }
+
+                // 重新获取实例（容器ID已更新）
+                instance = getInstanceById(instanceId);
+                log.info("Instance {} container repaired successfully, new container ID: {}",
+                        instance.getName(), instance.getContainerId());
+            }
+
+            // 启动容器
             dockerService.startContainer(instance.getContainerId());
 
             instance.setStatus(NapcatInstance.InstanceStatus.RUNNING);
